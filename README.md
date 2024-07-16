@@ -1,6 +1,6 @@
 # prj-golivott-l536zhan
 
-
+## DSE in EXE style with z3 incremental solving mode
 
 ## Getting started
 
