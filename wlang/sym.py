@@ -26,7 +26,7 @@ import sys
 import io 
 import z3
 
-from . import ast, int, undef_visitor
+from . import ast, int
 
 
 class SymState(object):
