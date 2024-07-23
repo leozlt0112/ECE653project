@@ -128,6 +128,8 @@ class ExeExec(ast.AstVisitor):
             if not isinstance(else_states_con_then, list):
                 else_states_con_then = [else_states_con_then]
             if not isinstance(else_states_sym_then, list):
+
+                #
                 else_states_sym_then = [else_states_sym_then]
             for con, sym in zip(else_states_con_then, else_states_sym_then):
                 new_state = ExeState()
