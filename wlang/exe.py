@@ -6,7 +6,7 @@ import z3
 
 from . import ast, int, sym
 from .bcolors import bcolors
-
+import copy
 class ExeState(object):
     def __init__(self, solver=None):
         self.con_state: int.State = int.State()
@@ -93,22 +93,86 @@ class ExeExec(ast.AstVisitor):
         failed_st.sym_state.add_pc(z3.Not(sym_cond))
         
         # Process the 'then' branch
-        then_states_con = self.con_vistor.visit(node.then_stmt, state=passed_st.con_state)
-        then_states_sym = self.sym_vistor.visit(node.then_stmt, state=passed_st.sym_state)
+        if con_cond:
+            then_states_con = self.con_vistor.visit(node.then_stmt, state=st.con_state)
+            then_states_sym = self.sym_vistor.visit(node.then_stmt, state=st.sym_state)
         
-        # Ensure then_states_con and then_states_sym are lists
-        if not isinstance(then_states_con, list):
-            then_states_con = [then_states_con]
-        if not isinstance(then_states_sym, list):
-            then_states_sym = [then_states_sym]
+            # Ensure then_states_con and then_states_sym are lists
+            if not isinstance(then_states_con, list):
+                then_states_con = [then_states_con]
+            if not isinstance(then_states_sym, list):
+                then_states_sym = [then_states_sym]
 
-        # Merge concrete and symbolic states for 'then' branch
-        for con, sym in zip(then_states_con, then_states_sym):
-            new_state = ExeState()
-            new_state.con_state = con
-            new_state.sym_state = sym
-            new_states.append(new_state)
-        return new_states
+            # Merge concrete and symbolic states for 'then' branch
+            for con, sym in zip(then_states_con, then_states_sym):
+                new_state = ExeState()
+                new_state.con_state = con
+                new_state.sym_state = sym
+                new_states.append(new_state)
+            
+            ## after forking is done, give new concrete state to match new condition
+            if not failed_st.sym_state.is_empty():
+                if node.has_else():
+                    failed_st.con_state.env = _pick_concrete(failed_st.sym_state)
+                    else_states_con_then = self.con_vistor.visit(node.else_stmt, state=failed_st.con_state)
+                    else_states_sym_then = self.sym_vistor.visit(node.else_stmt, state=failed_st.sym_state)
+            if not isinstance(else_states_con_then, list):
+                else_states_con_then = [else_states_con_then]
+            if not isinstance(else_states_sym_then, list):
+                else_states_sym_then = [else_states_sym_then]
+            for con, sym in zip(else_states_con_then, else_states_sym_then):
+                new_state = ExeState()
+                new_state.con_state = con
+                new_state.sym_state = sym
+                new_states.append(new_state)
+            
+        else:
+            else_states_con = self.con_vistor.visit(node.else_stmt, state=st.con_state)
+            else_states_sym = self.sym_vistor.visit(node.else_stmt, state=st.sym_state)
+            if not isinstance(else_states_con, list):
+                else_states_con = [else_states_con]
+            if not isinstance(else_states_sym, list):
+                else_states_sym = [else_states_sym]
+
+            # Merge concrete and symbolic states for 'then' branch
+            for con, sym in zip(else_states_con, else_states_sym):
+                new_state = ExeState()
+                new_state.con_state = con
+                new_state.sym_state = sym
+                print("else states\n")
+                print(new_state)
+                new_states.append(new_state)
+            print("what is new states", new_states)
+            take_copy = copy.deepcopy(new_states)
+            if not passed_st.sym_state.is_empty():
+                if node.has_else():
+                    passed_st_a = passed_st
+                    print("what is new states1", take_copy)
+
+                    passed_st_a.con_state.env = _pick_concrete(passed_st_a.sym_state)
+                    print("what is new states2", take_copy)
+                    node_copy = node
+                    state = passed_st_a
+                    a = self.con_vistor.visit(node_copy.then_stmt, state=state.con_state)
+                    print("what is new states3", take_copy)
+
+                    else_states_sym_then = self.sym_vistor.visit(node_copy.then_stmt, state=state.sym_state)
+
+                    state.sym_state.add_pc(z3.Not(sym_cond))
+                    print("what is new states4", take_copy)
+
+            if not isinstance(a, list):
+                a = [a]
+            if not isinstance(else_states_sym_then, list):
+                else_states_sym_then = [else_states_sym_then]
+            print("what is new states", take_copy)
+            for con, sym in zip(a, else_states_sym_then):
+                new_state = ExeState()
+                new_state.con_state = con
+                new_state.sym_state = sym
+                take_copy.append(new_state)
+            print("what is take copy",take_copy)
+        return take_copy
 
 
 
