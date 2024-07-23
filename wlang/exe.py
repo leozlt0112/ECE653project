@@ -78,34 +78,39 @@ class ExeExec(ast.AstVisitor):
         return [st]
 
     def visit_IfStmt(self, node, *args, **kwargs):
-        new_state= []
+        new_states = []
         st: ExeState = kwargs["state"]
-         # evaluate condition 
+
+        # Evaluate condition
         con_cond = self.con_vistor.visit(node.cond, state=st.con_state)
-        sym_cond = self.sym_vistor.visit(node.cond, state=st.sym_state) 
+        sym_cond = self.sym_vistor.visit(node.cond, state=st.sym_state)
         
-        # fork execution state
+        # Fork execution state
         passed_st, failed_st = st.fork()
 
-
-
-        # update pc
+        # Update path condition
         passed_st.sym_state.add_pc(sym_cond)
         failed_st.sym_state.add_pc(z3.Not(sym_cond))
         
-        # work with passed states first:
+        # Process the 'then' branch
+        then_states_con = self.con_vistor.visit(node.then_stmt, state=passed_st.con_state)
+        then_states_sym = self.sym_vistor.visit(node.then_stmt, state=passed_st.sym_state)
+        
+        # Ensure then_states_con and then_states_sym are lists
+        if not isinstance(then_states_con, list):
+            then_states_con = [then_states_con]
+        if not isinstance(then_states_sym, list):
+            then_states_sym = [then_states_sym]
 
-        if con_cond:
-            then_states_con=self.con_vistor.visit(node.then_stmt,state=st.con_state)
-            then_states_sym=self.sym_vistor.visit(node.then_stmt,state=st.sym_state)
-            new_state.append(then_states_con)
-            new_state.append(then_states_sym)
-            failed_st.con_state = _pick_concrete(failed_st.sym_state)
-            if node.has_else():
-                else_states_con=self.sym_vistor.visit(node.else_stmt, state=failed_st.con_state)
-                else_states_symb=self.con_vistor.visit(node.else_stmt, state=failed_st.sym_state)
-                new_state.append(else_states_con)
-                new_state.append(else_states_symb)
+        # Merge concrete and symbolic states for 'then' branch
+        for con, sym in zip(then_states_con, then_states_sym):
+            new_state = ExeState()
+            new_state.con_state = con
+            new_state.sym_state = sym
+            new_states.append(new_state)
+        return new_states
+
+
 
 
             
@@ -190,7 +195,6 @@ class ExeExec(ast.AstVisitor):
                 else: 
                     # this state is invalid we so don't execute it
                     res_state = [state]
-
                 new_states.extend(res_state)
 
             states = new_states

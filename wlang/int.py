@@ -32,7 +32,7 @@ class State(object):
         self.env = dict()
 
     def __repr__(self):
-        repr(self.env)
+       return str(self.env)
 
     def __str__(self):
         buf = StringIO()
