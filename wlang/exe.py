@@ -79,6 +79,8 @@ class ExeExec(ast.AstVisitor):
 
     def visit_IfStmt(self, node, *args, **kwargs):
         new_states = []
+        anothercopy = []
+        take_copy = []
         st: ExeState = kwargs["state"]
 
         # Evaluate condition
@@ -91,7 +93,10 @@ class ExeExec(ast.AstVisitor):
         # Update path condition
         passed_st.sym_state.add_pc(sym_cond)
         failed_st.sym_state.add_pc(z3.Not(sym_cond))
-        
+        else_states_con_then = []
+        else_states_sym_then = []
+        a = []
+        else_states_sym_then_a = []
         # Process the 'then' branch
         if con_cond:
             then_states_con = self.con_vistor.visit(node.then_stmt, state=st.con_state)
@@ -111,11 +116,15 @@ class ExeExec(ast.AstVisitor):
                 new_states.append(new_state)
             
             ## after forking is done, give new concrete state to match new condition
+            anothercopy=copy.deepcopy(new_states)
             if not failed_st.sym_state.is_empty():
                 if node.has_else():
                     failed_st.con_state.env = _pick_concrete(failed_st.sym_state)
                     else_states_con_then = self.con_vistor.visit(node.else_stmt, state=failed_st.con_state)
+                    print(else_states_con_then)
                     else_states_sym_then = self.sym_vistor.visit(node.else_stmt, state=failed_st.sym_state)
+                    st.sym_state.add_pc(z3.Not(sym_cond))
+
             if not isinstance(else_states_con_then, list):
                 else_states_con_then = [else_states_con_then]
             if not isinstance(else_states_sym_then, list):
@@ -124,7 +133,7 @@ class ExeExec(ast.AstVisitor):
                 new_state = ExeState()
                 new_state.con_state = con
                 new_state.sym_state = sym
-                new_states.append(new_state)
+                anothercopy.append(new_state)
             
         else:
             else_states_con = self.con_vistor.visit(node.else_stmt, state=st.con_state)
@@ -139,40 +148,26 @@ class ExeExec(ast.AstVisitor):
                 new_state = ExeState()
                 new_state.con_state = con
                 new_state.sym_state = sym
-                print("else states\n")
                 print(new_state)
                 new_states.append(new_state)
-            print("what is new states", new_states)
             take_copy = copy.deepcopy(new_states)
             if not passed_st.sym_state.is_empty():
                 if node.has_else():
-                    passed_st_a = passed_st
-                    print("what is new states1", take_copy)
-
-                    passed_st_a.con_state.env = _pick_concrete(passed_st_a.sym_state)
-                    print("what is new states2", take_copy)
-                    node_copy = node
-                    state = passed_st_a
-                    a = self.con_vistor.visit(node_copy.then_stmt, state=state.con_state)
-                    print("what is new states3", take_copy)
-
-                    else_states_sym_then = self.sym_vistor.visit(node_copy.then_stmt, state=state.sym_state)
-
-                    state.sym_state.add_pc(z3.Not(sym_cond))
-                    print("what is new states4", take_copy)
+                    passed_st.con_state.env = _pick_concrete(passed_st.sym_state)
+                    a = self.con_vistor.visit(node.then_stmt, state=passed_st.con_state)
+                    else_states_sym_then_a= self.sym_vistor.visit(node.then_stmt, state=passed_st.sym_state)
+                    st.sym_state.add_pc(z3.Not(sym_cond))
 
             if not isinstance(a, list):
                 a = [a]
-            if not isinstance(else_states_sym_then, list):
-                else_states_sym_then = [else_states_sym_then]
-            print("what is new states", take_copy)
-            for con, sym in zip(a, else_states_sym_then):
+            if not isinstance(else_states_sym_then_a, list):
+                else_states_sym_then = [else_states_sym_then_a]
+            for con, sym in zip(a, else_states_sym_then_a):
                 new_state = ExeState()
                 new_state.con_state = con
                 new_state.sym_state = sym
                 take_copy.append(new_state)
-            print("what is take copy",take_copy)
-        return take_copy
+        return take_copy + anothercopy
 
 
 
