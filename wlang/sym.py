@@ -281,7 +281,7 @@ class SymExec(ast.AstVisitor):
     def visit_HavocStmt(self, node, *args, **kwargs):
         st = kwargs["state"]
         for v in node.vars:
-            st.env[v.name] = z3.Int(v.name)
+            st.env[v.name] = z3.FreshInt(v.name)
         return [st]
 
     def visit_StmtList(self, node, *args, **kwargs):

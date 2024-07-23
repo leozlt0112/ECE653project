@@ -78,7 +78,41 @@ class ExeExec(ast.AstVisitor):
         return [st]
 
     def visit_IfStmt(self, node, *args, **kwargs):
-        pass
+        new_state= []
+        st: ExeState = kwargs["state"]
+         # evaluate condition 
+        con_cond = self.con_vistor.visit(node.cond, state=st.con_state)
+        sym_cond = self.sym_vistor.visit(node.cond, state=st.sym_state) 
+        
+        # fork execution state
+        passed_st, failed_st = st.fork()
+
+
+
+        # update pc
+        passed_st.sym_state.add_pc(sym_cond)
+        failed_st.sym_state.add_pc(z3.Not(sym_cond))
+        
+        # work with passed states first:
+
+        if con_cond:
+            then_states_con=self.con_vistor.visit(node.then_stmt,state=st.con_state)
+            then_states_sym=self.sym_vistor.visit(node.then_stmt,state=st.sym_state)
+            new_state.append(then_states_con)
+            new_state.append(then_states_sym)
+            failed_st.con_state = _pick_concrete(failed_st.sym_state)
+            if node.has_else():
+                else_states_con=self.sym_vistor.visit(node.else_stmt, state=failed_st.con_state)
+                else_states_symb=self.con_vistor.visit(node.else_stmt, state=failed_st.sym_state)
+                new_state.append(else_states_con)
+                new_state.append(else_states_symb)
+
+
+            
+
+
+
+
     
     def visit_WhileStmt(self, node, *args, **kwargs):
         pass
