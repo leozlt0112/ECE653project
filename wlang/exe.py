@@ -301,21 +301,6 @@ def _pick_concrete(state: sym.SymState):
         con_env[str(k)] = v.as_long()
     return con_env
 
-def _concretize_sym_state(state: ExeState):
-    """
-    Helper method to handle updating symbolic state when an execution path is too complex.
-    This method replaces symbolic variables with their concrete values and resets the path conditions.
-    """
-    con_env = state.con_state.env
-    sym_env = state.sym_state.env
-
-    # Add constraints that force the symbolic state to match the concrete state
-    for v in con_env.keys():
-        constraint = sym_env[v] == z3.IntVal(con_env[v])
-        state.sym_state.add_pc(constraint)
-
-    return state
-
 def _parse_args():
     import argparse
     ap = argparse.ArgumentParser(prog='sym',
