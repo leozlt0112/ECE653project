@@ -32,6 +32,10 @@ class ExeState(object):
     
     def __str__(self):
         buf = io.StringIO()
+        buf.write('Init Concrete State: ')
+        buf.write('\n')
+        buf.write(str(self._get_init_state()))
+        buf.write('\n') 
         buf.write('Concrete State: ')
         buf.write('\n')
         buf.write(str(self.con_state))
@@ -41,6 +45,18 @@ class ExeState(object):
         buf.write(str(self.sym_state))
 
         return buf.getvalue()
+    
+    def _get_init_state(self):
+        res = self.sym_state._solver.check()
+        if res == z3.sat:
+            model = self.sym_state._solver.model()
+            st = int.State()
+            for var in model:
+                concrete_value = model[var]
+                st.env[str(var).split("!")[0]] = concrete_value.as_long()
+            return st
+        else:
+            return None
     
     def mk_infeasable(self):
         self._is_infeasable = True
@@ -78,9 +94,6 @@ class ExeExec(ast.AstVisitor):
         return [st]
 
     def visit_IfStmt(self, node, *args, **kwargs):
-        new_states = []
-        anothercopy = []
-        take_copy = []
         st: ExeState = kwargs["state"]
 
         # Evaluate condition
@@ -93,95 +106,106 @@ class ExeExec(ast.AstVisitor):
         # Update path condition
         passed_st.sym_state.add_pc(sym_cond)
         failed_st.sym_state.add_pc(z3.Not(sym_cond))
-        else_states_con_then = []
-        else_states_sym_then = []
-        a = []
-        else_states_sym_then_a = []
-        # Process the 'then' branch
+
+        states = []
+
+        # if both branches are SAT we need to compute new concrete assignments
+        if not (passed_st.sym_state.is_empty() or failed_st.sym_state.is_empty()):
+            if con_cond:
+                # if concrete cond is true false_st needs new concrete assignments
+                failed_st.con_state.env = _pick_concrete(failed_st.sym_state)
+            else:
+                # if concrete cond is false true_st needs new concrete assignments
+                passed_st.con_state.env = _pick_concrete(passed_st.sym_state)
+
+            passed_states = self.visit(node.then_stmt, state=passed_st)
+            states.extend(passed_states)
+
+            if node.has_else():
+                failed_states = self.visit(node.else_stmt, state=failed_st)
+                states.extend(failed_states)
+            else:
+                states.extend([failed_st])
+
+            return states
+
+        # if we make it here only 1 path is SAT
         if con_cond:
-            then_states_con = self.con_vistor.visit(node.then_stmt, state=st.con_state)
-            then_states_sym = self.sym_vistor.visit(node.then_stmt, state=st.sym_state)
-        
-            # Ensure then_states_con and then_states_sym are lists
-            if not isinstance(then_states_con, list):
-                then_states_con = [then_states_con]
-            if not isinstance(then_states_sym, list):
-                then_states_sym = [then_states_sym]
-
-            # Merge concrete and symbolic states for 'then' branch
-            for con, sym in zip(then_states_con, then_states_sym):
-                new_state = ExeState()
-                new_state.con_state = con
-                new_state.sym_state = sym
-                new_states.append(new_state)
-            
-            ## after forking is done, give new concrete state to match new condition
-            anothercopy=copy.deepcopy(new_states)
-            if not failed_st.sym_state.is_empty():
-                if node.has_else():
-                    failed_st.con_state.env = _pick_concrete(failed_st.sym_state)
-                    else_states_con_then = self.con_vistor.visit(node.else_stmt, state=failed_st.con_state)
-                    print(else_states_con_then)
-                    else_states_sym_then = self.sym_vistor.visit(node.else_stmt, state=failed_st.sym_state)
-                    st.sym_state.add_pc(z3.Not(sym_cond))
-
-            if not isinstance(else_states_con_then, list):
-                else_states_con_then = [else_states_con_then]
-            if not isinstance(else_states_sym_then, list):
-
-                #
-                else_states_sym_then = [else_states_sym_then]
-            for con, sym in zip(else_states_con_then, else_states_sym_then):
-                new_state = ExeState()
-                new_state.con_state = con
-                new_state.sym_state = sym
-                anothercopy.append(new_state)
-            
+            passed_states = self.visit(node.then_stmt, state=passed_st)
+            states.extend(passed_states)
         else:
-            else_states_con = self.con_vistor.visit(node.else_stmt, state=st.con_state)
-            else_states_sym = self.sym_vistor.visit(node.else_stmt, state=st.sym_state)
-            if not isinstance(else_states_con, list):
-                else_states_con = [else_states_con]
-            if not isinstance(else_states_sym, list):
-                else_states_sym = [else_states_sym]
+            if node.has_else():
+                failed_states = self.visit(node.else_stmt, state=failed_st)
+                states.extend(failed_states)
+            else:
+                states.extend([failed_st])
+        
+        return states
 
-            # Merge concrete and symbolic states for 'then' branch
-            for con, sym in zip(else_states_con, else_states_sym):
-                new_state = ExeState()
-                new_state.con_state = con
-                new_state.sym_state = sym
-                print(new_state)
-                new_states.append(new_state)
-            take_copy = copy.deepcopy(new_states)
-            if not passed_st.sym_state.is_empty():
-                if node.has_else():
-                    passed_st.con_state.env = _pick_concrete(passed_st.sym_state)
-                    a = self.con_vistor.visit(node.then_stmt, state=passed_st.con_state)
-                    else_states_sym_then_a= self.sym_vistor.visit(node.then_stmt, state=passed_st.sym_state)
-                    st.sym_state.add_pc(z3.Not(sym_cond))
-
-            if not isinstance(a, list):
-                a = [a]
-            if not isinstance(else_states_sym_then_a, list):
-                else_states_sym_then = [else_states_sym_then_a]
-            for con, sym in zip(a, else_states_sym_then_a):
-                new_state = ExeState()
-                new_state.con_state = con
-                new_state.sym_state = sym
-                take_copy.append(new_state)
-        return take_copy + anothercopy
-
-
-
-
-            
-
-
-
-
-    
     def visit_WhileStmt(self, node, *args, **kwargs):
-        pass
+        depth = kwargs.get('depth', 0)
+
+        st: ExeState = kwargs["state"]
+
+        con_cond = self.con_vistor.visit(node.cond, state=st.con_state)
+        sym_cond = self.sym_vistor.visit(node.cond, state=st.sym_state)
+
+        states = []
+
+        # fork execution state
+        true_st, false_st = st.fork()
+
+        true_st.sym_state.add_pc(sym_cond)
+        false_st.sym_state.add_pc(z3.Not(sym_cond))
+
+        # if both branches are SAT we need to compute new concrete assignments
+        if not (true_st.sym_state.is_empty() or false_st.sym_state.is_empty()):
+            if con_cond:
+                # if concrete cond is true false_st needs new concrete assignments
+                false_st.con_state.env = _pick_concrete(false_st.sym_state)
+            else:
+                # if concrete cond is false true_st needs new concrete assignments
+                true_st.con_state.env = _pick_concrete(true_st.sym_state)
+
+            states.extend([false_st]) # Add the false state to output
+
+            # evaluate loop
+            if depth < 10:
+                true_states: list[ExeState] = self.visit(node.body, state=true_st) # get program states after executing loop body
+                for true_st in true_states:
+                    # Extract states for next iteration of the loop
+                    loop_states = self.visit(node, state=true_st, depth=depth+1)
+                    states.extend(loop_states)
+            else:
+                # if depth is greater than 10 this loop is complex and we will let the loop finish concretely
+                true_states: list[ExeState] = self.visit(node.body, state=true_st) # get program states after executing loop body
+                for true_st in true_states:
+                    true_st.con_state = self.con_vistor.visit(node, state=true_st.con_state)
+                    states.extend([true_st])
+            
+            return states
+
+        # if we make it here only a single branch is SAT
+        if con_cond:
+            # true_st is SAT
+            # evaluate loop
+            if depth < 10:
+                true_states: list[ExeState] = self.visit(node.body, state=true_st) # get program states after executing loop body
+                for true_st in true_states:
+                    # Extract states for next iteration of the loop
+                    loop_states = self.visit(node, state=true_st, depth=depth+1)
+                    states.extend(loop_states)
+            else:
+                # if depth is greater than 10 this loop is complex and we will let the loop finish concretely
+                true_states: list[ExeState] = self.visit(node.body, state=true_st) # get program states after executing loop body
+                for true_st in true_states:
+                    true_st.con_state = self.con_vistor.visit(node, state=true_st.con_state)
+                    states.extend([true_st])
+        else:
+            # false_st is SAT
+            states.extend([false_st]) # Add the false state to output
+
+        return states
     
     def visit_AssertStmt(self, node, *args, **kwargs):
         st: ExeState = kwargs["state"]
@@ -277,6 +301,21 @@ def _pick_concrete(state: sym.SymState):
         con_env[str(k)] = v.as_long()
     return con_env
 
+def _concretize_sym_state(state: ExeState):
+    """
+    Helper method to handle updating symbolic state when an execution path is too complex.
+    This method replaces symbolic variables with their concrete values and resets the path conditions.
+    """
+    con_env = state.con_state.env
+    sym_env = state.sym_state.env
+
+    # Add constraints that force the symbolic state to match the concrete state
+    for v in con_env.keys():
+        constraint = sym_env[v] == z3.IntVal(con_env[v])
+        state.sym_state.add_pc(constraint)
+
+    return state
+
 def _parse_args():
     import argparse
     ap = argparse.ArgumentParser(prog='sym',
@@ -285,7 +324,6 @@ def _parse_args():
                     help='WLang program to interpret')
     args = ap.parse_args()
     return args
-
 
 def main():
     args = _parse_args()

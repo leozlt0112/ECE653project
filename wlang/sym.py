@@ -46,6 +46,12 @@ class SymState(object):
         """Add constraints to the path condition"""
         self.path.extend(exp)
         self._solver.append(exp)
+        self._solver.push()
+    
+    def pop_pc(self, *exp):
+        """Remove constraints to the path condition"""
+        self.path.pop()
+        self._solver.pop()
 
     def is_error(self):
         return self._is_error
@@ -67,7 +73,7 @@ class SymState(object):
         model = self._solver.model()
         st = int.State()
         for (k, v) in self.env.items():
-            st.env[k] = model.eval(v)
+            st.env[k] = model.eval(v, model_completion=True)
         return st
 
     def fork(self):
