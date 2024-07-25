@@ -170,16 +170,7 @@ class ExeExec(ast.AstVisitor):
                 new_state.sym_state = sym
                 take_copy.append(new_state)
         return take_copy + anothercopy
-
-
-
-
-            
-
-
-
-
-    
+  
     def visit_WhileStmt(self, node, *args, **kwargs):
         pass
     
