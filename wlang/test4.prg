@@ -1,3 +1,4 @@
 havoc x;
-if x>0 then x:=12 else x:=18;
-if x>12 then x:=13 else x:=20
+y:=x+2;
+if (x*6)>y then x:=12 else y:=14;
+if y>12 then y:=13 else y:=20

@@ -96,7 +96,7 @@ class ExeExec(ast.AstVisitor):
     def visit_IfStmt(self, node, *args, **kwargs):
         st: ExeState = kwargs["state"]
 
-        # Evaluate condition
+        # Evaluate conditionwha
         con_cond = self.con_vistor.visit(node.cond, state=st.con_state)
         sym_cond = self.sym_vistor.visit(node.cond, state=st.sym_state)
         

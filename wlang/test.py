@@ -23,7 +23,6 @@
 import unittest
 
 if __name__ == '__main__':
-    test_names = ['test_int', 'test_util',
-                  'test_stats_visitor', 'test_undef_visitor', 'test_sym']
+    test_names = ['test_exe']
     suite = unittest.defaultTestLoader.loadTestsFromNames (['wlang.' + t for t in test_names])
     result = unittest.TextTestRunner().run(suite)
