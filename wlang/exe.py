@@ -181,6 +181,7 @@ class ExeExec(ast.AstVisitor):
                 true_states: list[ExeState] = self.visit(node.body, state=true_st) # get program states after executing loop body
                 for true_st in true_states:
                     true_st.con_state = self.con_vistor.visit(node, state=true_st.con_state)
+                    _concretize_sym_state(true_st)
                     states.extend([true_st])
             
             return states
@@ -200,6 +201,7 @@ class ExeExec(ast.AstVisitor):
                 true_states: list[ExeState] = self.visit(node.body, state=true_st) # get program states after executing loop body
                 for true_st in true_states:
                     true_st.con_state = self.con_vistor.visit(node, state=true_st.con_state)
+                    _concretize_sym_state(true_st)
                     states.extend([true_st])
         else:
             # false_st is SAT
@@ -311,6 +313,7 @@ def _concretize_sym_state(state: ExeState):
 
     # Add constraints that force the symbolic state to match the concrete state
     for v in con_env.keys():
+        sym_env[v] = z3.IntVal(con_env[v])
         constraint = sym_env[v] == z3.IntVal(con_env[v])
         state.sym_state.add_pc(constraint)
 
