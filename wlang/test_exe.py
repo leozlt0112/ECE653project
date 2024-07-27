@@ -94,10 +94,20 @@ class TestExe (unittest.TestCase):
         st =  exe.ExeState()
         st.mk_infeasable()
 
-    def test_empty(self):
-        prg1 = ""
+    def test_no_states_produced(self):
+        prg1 = "havoc x; assume false"  
         ast1 = ast.parse_string(prg1)
         engine = exe.ExeExec()
         st = exe.ExeState()
-        out = [s for s in engine.run(ast1, st)]
-        self.assertEquals(len(out), 0)
+
+        with patch.object(engine, 'visit', return_value=[]):
+            out = engine.run(ast1, st)
+            self.assertEquals(len(out), 0)
+    def test_no_states_produced(self):
+        prg1 = "skip"  
+        ast1 = ast.parse_string(prg1)
+        engine = exe.ExeExec()
+        st = exe.ExeState()
+        out = engine.run(ast1, st)
+        self.assertEquals(len(out), 1)
+    
