@@ -143,5 +143,4 @@ class TestExe (unittest.TestCase):
     @patch('sys.argv', ['wlang.exe', 'wlang/test_invalid.prg'])
     def test_main2(self):
         self.assertEqual(exe.main(),0)
-if __name__ == '__main__':
-    unittest.main()
+

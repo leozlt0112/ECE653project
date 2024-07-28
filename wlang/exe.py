@@ -270,8 +270,7 @@ class ExeExec(ast.AstVisitor):
         
     def visit_StmtList(self, node, *args, **kwargs):
         states: list[ExeState] | ExeState = kwargs["state"]
-        if not isinstance(states, list):
-            states = [states]
+        states = [states]
     
         for stmt in node.stmts:
             new_states = []
