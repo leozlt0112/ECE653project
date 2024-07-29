@@ -20,3 +20,11 @@ Execute file
 ```
 $ python3 -m wlang.exe wlang/test1.prg
 ```
+
+## Repo Structure
+
+- `wlang` directory holds all of the code the bulk of the implementation is in `exe.py` and `sym.py`. The other files were all taken from the assingment 2 template.
+
+- Testing files are `wlang\test_exe.py` and `wlang\test_sym.py`. 
+
+- `report.pdf` is the report.
