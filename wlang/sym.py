@@ -47,11 +47,6 @@ class SymState(object):
         self.path.extend(exp)
         self._solver.append(exp)
         self._solver.push()
-    
-    def pop_pc(self, *exp):
-        """Remove constraints to the path condition"""
-        self.path.pop()
-        self._solver.pop()
 
     def is_error(self):
         return self._is_error
@@ -86,10 +81,6 @@ class SymState(object):
 
     def __repr__(self):
         return str(self)
-
-    def to_smt2(self):
-        """Returns the current state as an SMT-LIB2 benchmark"""
-        return self._solver.to_smt2()
 
     def __str__(self):
         buf = io.StringIO()
@@ -219,9 +210,6 @@ class SymExec(ast.AstVisitor):
 
         st: SymState = kwargs["state"]
         init_states = [st]
-
-        if node.inv:
-            pass # TODO inv support
         
         # Run loop
         states = []

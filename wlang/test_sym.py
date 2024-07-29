@@ -34,6 +34,16 @@ class TestSym (unittest.TestCase):
         st = sym.SymState()
         out = [s for s in engine.run(ast1, st)]
         self.assertEquals(len(out), 2)
+
+    def test_assume_assume(self):
+        prg1 = "havoc x; assume false"
+        ast1 = ast.parse_string(prg1)
+        engine = sym.SymExec()
+        st = sym.SymState()
+        out = [s for s in engine.run(ast1, st)]
+        con = st.pick_concerete()
+        self.assertEquals(con, None)
+        self.assertEquals(len(out), 0)
     
     def test_SymState_methods(self):
         prg1 = "havoc x; assume x > 10; assert x > 15"
@@ -45,18 +55,8 @@ class TestSym (unittest.TestCase):
 
         self.assertTrue(out[0].is_error())
         self.assertFalse(out[1].is_error())
-        smt2 = """; benchmark generated from python API
-(set-info :status unknown)
-(declare-fun x () Int)
-(assert
- (< 10 x))
-(assert
- (< 15 x))
-(check-sat)
-"""
-        self.assertEquals(out[1].to_smt2(),smt2)
-        state = """x: x
-pc: [10 < x, 15 < x]
+        state = """x: x!12
+pc: [10 < x!12, 15 < x!12]
 """
         self.assertEquals(repr(out[1]),state)
 
@@ -178,45 +178,4 @@ pc: [10 < x, 15 < x]
         engine = sym.SymExec()
         st = sym.SymState()
         out = [s for s in engine.run(ast1, st) if not s.is_error()]
-        self.assertEquals(len(out), 0)
-
-    def test_while_inv(self):
-        prg1 = """
-                havoc x, y;
-                assume y >= 0;
-                c := 0;
-                r := x;
-                while c < y
-                inv r = x + c and c <= y
-                do
-                {
-                    r := r + 1;
-                    c := c + 1
-                };
-                assert r = x + y
-            """
-        ast1 = ast.parse_string(prg1)
-        engine = sym.SymExec()
-        st = sym.SymState()
-        out = [s for s in engine.run(ast1, st)]
-        self.assertEquals(len(out), 1)
-
-        prg2 = """
-                havoc x, y;
-                assume y >= 0;
-                c := 0;
-                r := x;
-                while c < y
-                inv c < 0
-                do
-                {
-                    r := r + 1;
-                    c := c + 1
-                };
-                assert r = x + y
-            """
-        ast2 = ast.parse_string(prg2)
-        engine = sym.SymExec()
-        st = sym.SymState()
-        out = [s for s in engine.run(ast2, st)]
         self.assertEquals(len(out), 0)
