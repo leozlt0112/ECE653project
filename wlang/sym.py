@@ -229,7 +229,6 @@ class SymExec(ast.AstVisitor):
             if not true_st.is_empty() and depth < 10:
                 true_states = self.visit(node.body, state=true_st)
                 for true_st in true_states:
-                    if not true_st.is_empty():
                         loop_states = self.visit(node, state=true_st, depth=depth+1)
                         states.extend(loop_states)
 
@@ -280,8 +279,7 @@ class SymExec(ast.AstVisitor):
 
     def visit_StmtList(self, node, *args, **kwargs):
         states = kwargs["state"]
-        if not isinstance(states, list):
-            states = [states]
+        states = [states]
     
         for stmt in node.stmts:
             new_states = []

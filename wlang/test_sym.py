@@ -21,6 +21,7 @@
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 import unittest
+import z3 
 from unittest.mock import patch
 
 from . import ast, sym
@@ -179,3 +180,27 @@ pc: [10 < x!12, 15 < x!12]
         st = sym.SymState()
         out = [s for s in engine.run(ast1, st) if not s.is_error()]
         self.assertEquals(len(out), 0)
+
+    def test_solver(self):
+        prg1 =  """
+                    i := 0;
+                    print_state
+                """
+        ast1 = ast.parse_string(prg1)
+        engine = sym.SymExec()
+        solver = z3.Solver()
+        st = sym.SymState(solver)
+        out = [s for s in engine.run(ast1, st) if not s.is_error()]
+        self.assertEquals(len(out), 1)
+
+    def test_not_true(self):
+        prg1 =  """
+                    i := 0;
+                    if not i = 0 then print_state
+                """
+        ast1 = ast.parse_string(prg1)
+        engine = sym.SymExec()
+
+        st = sym.SymState()
+        out = [s for s in engine.run(ast1, st) if not s.is_error()]
+        self.assertEquals(len(out), 1)
