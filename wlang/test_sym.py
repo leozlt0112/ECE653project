@@ -56,8 +56,8 @@ class TestSym (unittest.TestCase):
 
         self.assertTrue(out[0].is_error())
         self.assertFalse(out[1].is_error())
-        state = """x: x!12
-pc: [10 < x!12, 15 < x!12]
+        state = """x: x!14
+pc: [10 < x!14, 15 < x!14]
 """
         self.assertEquals(repr(out[1]),state)
 
