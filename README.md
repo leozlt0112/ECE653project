@@ -16,10 +16,6 @@ Install required packages
 $ pip3 install -r requirements.txt
 ```
 
-Execute file
-```
-$ python3 -m wlang.exe wlang/test1.prg
-```
 
 ## Repo Structure
 
@@ -28,3 +24,4 @@ $ python3 -m wlang.exe wlang/test1.prg
 - Testing files are `wlang\test_exe.py` and `wlang\test_sym.py`. 
 
 - `report.pdf` is the report.
+[report](./report.pdf)
